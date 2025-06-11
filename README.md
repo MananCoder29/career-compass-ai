@@ -105,5 +105,8 @@ An AI-powered career assistant that combines intelligent job searching, resume m
 - Version: 2.0.0
 - Last Updated: 2025-06-11
 
+## 🚀 Try Live Demo 👇
+- [click here](https://huggingface.co/spaces/Agents-MCP-Hackathon/job-hunting-ai)
+
 ## 🏗️ High-Level Architecture Diagram
 ![image/png](https://cdn-uploads.huggingface.co/production/uploads/6765bc297fe8b213e581fda0/YP0H5wlTC9G0Oqn7vKwUH.png)
