@@ -82,7 +82,7 @@ def is_job_remote(job: Dict) -> bool:
     
     return any(keyword in full_text for keyword in remote_keywords)
 
-def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None) -> str:
+def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None, remote_only: bool = False) -> str:
     """
     Scrape job information from Google Jobs using provided SerpAPI key
     """
@@ -99,19 +99,15 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
             return json.dumps([])
         
         # Test API connection first
-        api_connected, api_message = test_api_connection(api_key)
-        if not api_connected:
-            print(f"API Connection Failed: {api_message}")
-            return json.dumps([])
+        # api_connected, api_message = test_api_connection(api_key)
+        # if not api_connected:
+        #     print(f"API Connection Failed: {api_message}")
+        #     return json.dumps([])
         
-        print(f"API Connection: {api_message}")
+        # print(f"API Connection: {api_message}")
         
         # Clean and prepare search query
         search_query = query.strip()
-        
-        # Add remote keyword if not present
-        if "remote" not in search_query.lower():
-            search_query = f"{search_query} remote"
         
         # Location configuration mapping
         location_settings = {
@@ -121,16 +117,38 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
             "Australia": {"location": "Australia", "gl": "au", "hl": "en"},
             "Germany": {"location": "Germany", "gl": "de", "hl": "en"},
             "Netherlands": {"location": "Netherlands", "gl": "nl", "hl": "en"},
-            "Remote Worldwide": {"location": "", "gl": "us", "hl": "en"}
+            "Worldwide": {"location": "", "gl": "us", "hl": "en"}
         }
         
         # Get location settings
         loc_config = location_settings.get(location, location_settings["Canada"])
         
         # Add location to query if not worldwide
-        if location != "Remote Worldwide" and loc_config["location"]:
-            search_query = f"{search_query} in {loc_config['location']}"
+
+        # if location != "Worldwide" and loc_config["location"] and not remote_only:
+        #     search_query = f"{search_query} in {loc_config['location']}"
         
+        # if location != "Worldwide" and loc_config["location"] and remote_only:
+        #     search_query = f"{search_query} in {loc_config['location']} only remote opportunities"
+        
+        # Build search query based on location and remote preferences
+        if location == "Worldwide":
+            if remote_only:
+                # Worldwide remote: Add remote keyword to get better remote results
+                if "remote" not in search_query.lower():
+                    search_query = f"{search_query} remote"
+                    # For worldwide all jobs, don't add location or remote keywords
+        else:
+            # Specific location
+            if remote_only:
+                # Specific location + remote: Add both location and remote keywords
+                search_query = f"{search_query} in {loc_config['location']}"
+                if "remote" not in search_query.lower():
+                    search_query = f"{search_query} remote"
+            else:
+                # Specific location + all jobs: Just add location
+                search_query = f"{search_query} in {loc_config['location']}"
+
         print(f"📝 Final search query: '{search_query}'")
         
         # Build search parameters
@@ -141,7 +159,7 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
             "hl": loc_config["hl"],
             "gl": loc_config["gl"],
             "chips": "date_posted:month",
-            "num": 12  # Reasonable number of results
+            "num": 25  # Reasonable number of results
         }
         
         # Add location parameter if specified
@@ -211,8 +229,8 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
                 company = job.get("company_name", "N/A")
                 job_location = job.get("location", "N/A")
                 
-                print(f"   Company: {company}")
-                print(f"   Location: {job_location}")
+                print(f" Company: {company}")
+                print(f" Location: {job_location}")
                 
                 # Extract salary information
                 salary = "Not specified"
@@ -221,11 +239,11 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
                 elif job.get("detected_extensions", {}).get("salary"):
                     salary = clean_salary_text(job["detected_extensions"]["salary"])
                 
-                print(f"   Salary: {salary}")
+                print(f" Salary: {salary}")
                 
                 # Determine if job is remote
                 remote_status = is_job_remote(job)
-                print(f"   Remote: {'Yes' if remote_status else 'No'}")
+                print(f" Remote: {'Yes' if remote_status else 'No'}")
                 
                 # Extract apply link
                 apply_link = "N/A"
@@ -259,23 +277,25 @@ def scrape_job_profile(query: str, location: str = "Canada", api_key: str = None
                 # Apply filtering logic
                 should_include = False
                 
-                if location == "Remote Worldwide":
-                    # For worldwide remote, only include remote jobs
-                    should_include = remote_status
-                    filter_reason = "remote status" if remote_status else "not remote"
-                else:
-                    # For specific locations, include if matches location OR is remote
-                    location_match = location.lower() in job_location.lower()
-                    should_include = location_match or remote_status
-                    
-                    if location_match and remote_status:
-                        filter_reason = "location match + remote"
-                    elif location_match:
-                        filter_reason = "location match"
-                    elif remote_status:
-                        filter_reason = "remote job"
+                if location == "Worldwide":
+                    if remote_only:
+                        # Worldwide + Remote only: Only include remote jobs
+                        should_include = remote_status
+                        filter_reason = "remote job (worldwide remote-only)" if remote_status else "not remote (worldwide remote-only filtered out)"
                     else:
-                        filter_reason = "no match"
+                        # Worldwide + All jobs: Include everything
+                        should_include = True
+                        filter_reason = "worldwide search (all jobs included)"
+                else:
+                    # Specific location (Canada, US, etc.)
+                    if remote_only:
+                        # Specific location + Remote only: Only include remote jobs
+                        should_include = remote_status
+                        filter_reason = f"remote job in {location}" if remote_status else f"not remote (filtered out for {location} remote-only)"
+                    else:
+                        # Specific location + All jobs: Include all jobs (API already geo-filters)
+                        should_include = True
+                        filter_reason = f"all jobs in {location} (API geo-filtered)"
                 
                 if should_include:
                     processed_jobs.append(job_entry)

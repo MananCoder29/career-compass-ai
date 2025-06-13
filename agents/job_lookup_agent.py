@@ -85,7 +85,7 @@ def lookup(
         print(f"🔍 Direct Lookup: Searching for '{query}' in {location} (Remote only: {remote_only})")
         
         # Use the provided API key for the search
-        result = scrape_job_profile(query, location, serp_api_key)
+        result = scrape_job_profile(query, location, serp_api_key, remote_only)
         
         # Validate result
         if not result:
@@ -128,7 +128,7 @@ def lookup_with_llm(
             return "[]"
             
         llm = ChatOpenAI(
-            temperature=0.1,
+            temperature=0.3,
             model_name="meta-llama/Meta-Llama-3.1-405B-Instruct",
             api_key=nebius_api_key,
             base_url="https://api.studio.nebius.com/v1/",
@@ -178,15 +178,15 @@ IMPORTANT FILTERING RULES:
 INSTRUCTIONS:
 1. Use the JobSearch tool with the query: "{input}"
 2. The tool automatically applies the filtering based on the specified criteria
-3. Return the complete JSON array from the tool without any modifications
+3. Return ONLY the filtered JSON array of relevant, high-quality job matches
 
 FORMAT:
 Thought: I need to search for jobs with the specified criteria and filtering.
 Action: JobSearch
 Action Input: {input}
 Observation: [tool results will be properly filtered]
-Thought: The tool has returned filtered results. I'll return them exactly as provided.
-Final Answer: [return the exact JSON array from the tool]
+Thought: The tool has returned filtered results. I'll return only high-quality job matches.
+Final Answer: [return the high-quality job matches JSON array from the tool]
 
 CRITICAL: Your Final Answer must be ONLY the JSON array starting with [ and ending with ]. No explanations or additional text.
 

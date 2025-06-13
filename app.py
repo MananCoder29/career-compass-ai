@@ -505,7 +505,7 @@ def create_interface():
                                         "Australia", 
                                         "Germany",
                                         "Netherlands",
-                                        "Remote Worldwide"
+                                        "Worldwide"
                                     ],
                                     value="Canada",
                                     label="Location",
